@@ -64,10 +64,10 @@ class CustomConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 1
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 2  # Background + number of classes (Here, 2)
+    NUM_CLASSES = 1 + 5  # Background + number of classes (Here, 2)
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 100
@@ -88,8 +88,13 @@ class CustomDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes according to the numbe of classes required to detect
-        self.add_class("custom", 1, "object1")
-        self.add_class("custom",2,"object2")
+        self.add_class("custom",1,"tennis court")
+        self.add_class("custom", 2, "basketball court")
+        self.add_class("custom",3,"car")
+        self.add_class("custom",4,"house")
+        self.add_class("custom",5,"swimming pool")
+       
+
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -111,7 +116,7 @@ class CustomDataset(utils.Dataset):
         # }
         # We mostly care about the x and y coordinates of each region
         # Note: In VIA 2.0, regions was changed from a dict to a list.
-        annotations = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
+        annotations = json.load(open(os.path.join(dataset_dir, "annotations.json")))
         annotations = list(annotations.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
@@ -130,13 +135,24 @@ class CustomDataset(utils.Dataset):
             custom = [s['region_attributes'] for s in a['regions'].values()]
             
             num_ids=[]
+            #      self.add_class("custom",1,"tennis court")
+            # self.add_class("custom", 2, "basketball court")
+            # self.add_class("custom",3,"car")
+            # self.add_class("custom",4,"house")
+            # self.add_class("custom",5,"swimming pool")
             #Add the classes according to the requirement
             for n in custom:
                 try:
-                    if n['label']=='object1':
+                    if n['label']=='tennis court':
                         num_ids.append(1)
-                    elif n['label']=='object2':
+                    elif n['label']=='basketball court':
                         num_ids.append(2)
+                    elif n['label']=='car':
+                        num_ids.append(3)  
+                    elif n['label']=='house':
+                        num_ids.append(4)  
+                    elif n['label']=='swimming pool':
+                        num_ids.append(5)  
                 except:
                     pass
 
@@ -174,11 +190,16 @@ class CustomDataset(utils.Dataset):
         info = self.image_info[image_id]
         mask = np.zeros([info["height"], info["width"], len(info["polygons"])],
                         dtype=np.uint8)
+        #print('height ' + str(info['height']))
         for i, p in enumerate(info["polygons"]):
+            #print("i" + str(i))
             # Get indexes of pixels inside the polygon and set them to 1
             rr, cc = skimage.draw.polygon(p['all_points_y'], p['all_points_x'])
+            #print("beffore " +str(rr))
+            rr = rr - 1
+            #print("rr " +(str(rr)))
             mask[rr, cc, i] = 1
-
+        
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID only, we return an array of 1s
         num_ids = np.array(num_ids, dtype=np.int32)	
